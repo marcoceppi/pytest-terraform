@@ -2,6 +2,10 @@ class PytestTerraformError(Exception):
     """Pytest Terraform Exception Base Class"""
 
 
+class ModuleNotFound(ValueError):
+    """module not found"""
+
+
 class TerraformCommandFailed(PytestTerraformError):
     """Terraform Command failed during execution"""
 

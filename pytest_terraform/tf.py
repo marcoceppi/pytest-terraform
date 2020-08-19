@@ -22,7 +22,7 @@ import jmespath
 import pytest
 from py.path import local
 
-from .exceptions import TerraformCommandFailed
+from .exceptions import TerraformCommandFailed, ModuleNotFound
 from .options import teardown as td
 
 
@@ -32,10 +32,6 @@ def find_binary(bin_name):
         candidate = os.path.join(p, bin_name)
         if os.path.exists(candidate):
             return candidate
-
-
-class ModuleNotFound(ValueError):
-    """module not found"""
 
 
 class TerraformRunner(object):
@@ -112,8 +108,11 @@ class TerraformRunner(object):
             env["TF_DATA_DIR"] = self.work_dir
         cwd = self.module_dir or self.work_dir
         print("run cmd", args, file=sys.stderr)
-        run_cmd = self.debug and subprocess.check_call or subprocess.check_output
-        run_cmd(args, cwd=cwd, stderr=subprocess.STDOUT, env=env)
+        try:
+            subprocess.check_output(args, cwd=cwd, stderr=subprocess.STDOUT, env=env)
+        except subprocess.CalledProcessError as e:
+            raise TerraformCommandFailed(e.output)
+
 
 
 class TerraformState(object):
@@ -304,7 +303,7 @@ class TerraformFixture(object):
         print("tf teardown %s" % self.tf_root_module, file=sys.stderr)
         try:
             self.runner.destroy()
-        except subprocess.CalledProcessError as e:
+        except TerraformCommandFailed as e:
             if self.teardown_config == td.IGNORE:
                 return
             raise TerraformCommandFailed from e
